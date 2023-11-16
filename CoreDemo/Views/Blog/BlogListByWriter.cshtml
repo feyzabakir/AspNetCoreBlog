@@ -19,15 +19,15 @@
     @foreach(var item in Model)
     {
         <tr>
-            <td>@item.BlogID</td>
+            <th>@item.BlogID</th>
             <td>@item.BlogTitle</td>
-            <td>@item.BlogCreateDate</td>
-            <td>@item.CategoryID</td>
+            <td>@(((DateTime)item.BlogCreateDate).ToString("dd-MM-yyyy"))</td>
+            <td>@item.Category.CategoryName</td>
             <td>@item.BlogStatus</td>
-            <td><a href="#" class="btn btn-danger">Sil</a></td>
-            <td><a href="#" class="btn btn-success">Düzenle</a></td>
+            <td><a href="/Blog/DeleteBlog/@item.BlogID" class="btn btn-danger">Sil</a></td>
+            <td><a href="/Blog/EditBlog/@item.BlogID" class="btn btn-success">Düzenle</a></td>
         </tr>
     }
 </table>
-<a class="btn btn-primary">Yeni Blog Oluştur</a>
+<a href="/Blog/BlogAdd/" class="btn btn-primary">Yeni Blog Oluştur</a>
 

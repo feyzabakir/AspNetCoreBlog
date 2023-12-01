@@ -6,17 +6,27 @@ using DataAccessLayer.EntityFramework;
 using EntityLayer.Concrete;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace CoreDemo.Controllers
 {
     public class WriterController : Controller
     {
         WriterManager wm = new WriterManager(new EfWriterRepository());
+        UserManager userManager = new UserManager(new EfUserRepository());
+        private readonly UserManager<AppUser> _userManager;
+
+        public WriterController(UserManager<AppUser> userManager)
+        {
+            _userManager = userManager;
+        }
+
         [Authorize]
         public IActionResult Index()
         {
@@ -24,7 +34,7 @@ namespace CoreDemo.Controllers
             ViewBag.v = usermail;
             Context c = new Context();
             var writerName = c.Writers.Where(x => x.WriterMail == usermail).Select(y => y.WriterMail).FirstOrDefault();
-            ViewBag.v2=writerName;
+            ViewBag.v2 = writerName;
             return View();
         }
 
@@ -55,35 +65,26 @@ namespace CoreDemo.Controllers
         }
 
         [HttpGet]
-        public IActionResult WriterEditProfile()
+        public async Task<IActionResult> WriterEditProfile()
         {
-            Context c = new Context();
-            var username = User.Identity.Name;
-            var usermail = c.Users.Where(x => x.UserName == username).Select(y => y.Email).FirstOrDefault();
-            var writerID = c.Writers.Where(x => x.WriterMail == usermail).Select(y => y.WriterID).FirstOrDefault();
-            var values = wm.GetWriterByID(writerID);
-            var writervalues = wm.TGetByID(writerID);
-            return View(writervalues);
+            var values = await _userManager.FindByNameAsync(User.Identity.Name);
+            UserUpdateViewModel model = new UserUpdateViewModel();
+            model.mail = values.Email;
+            model.userName = values.UserName;
+            model.nameSurname = values.NameSurname;
+            model.imageUrl = values.ImageUrl;
+            return View(model);
         }
 
         [HttpPost]
-        public IActionResult WriterEditProfile(Writer p)
-        { 
-            WriterValidator wl = new WriterValidator();
-            ValidationResult results = wl.Validate(p);
-            if(results.IsValid)
-            {
-                wm.TUpdate(p);
-                return RedirectToAction("Index", "Dashboard");
-            }
-            else
-            {
-                foreach(var item in results.Errors)
-                {
-                    ModelState.AddModelError(item.PropertyName, item.ErrorMessage);
-                }
-            }
-            return View();
+        public async Task<IActionResult> WriterEditProfile(UserUpdateViewModel model)
+        {
+            var values = await _userManager.FindByNameAsync(User.Identity.Name);
+            values.NameSurname = model.nameSurname; 
+            values.ImageUrl=model.imageUrl;
+            values.Email = model.mail;
+            var result = await _userManager.UpdateAsync(values);
+            return RedirectToAction("Index", "Dashboard");
         }
         [AllowAnonymous]
         [HttpGet]
@@ -96,12 +97,12 @@ namespace CoreDemo.Controllers
         public IActionResult WriterAdd(AddProfileImage p)
         {
             Writer w = new Writer();
-            if(p.WriterImage != null) 
+            if (p.WriterImage != null)
             {
                 var extension = Path.GetExtension(p.WriterImage.FileName);
                 var newimagename = Guid.NewGuid() + extension;
                 var location = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/WriterImagesFile/", newimagename);
-                var stream = new FileStream(location,FileMode.Create);
+                var stream = new FileStream(location, FileMode.Create);
                 p.WriterImage.CopyTo(stream);
                 w.WriterImage = newimagename;
 
